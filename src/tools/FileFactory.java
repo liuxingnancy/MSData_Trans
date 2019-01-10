@@ -13,7 +13,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -42,6 +41,8 @@ public class FileFactory {
 		add(MachineID.M5500);
 		add(MachineID.M5600);
 		add(MachineID.M6500);
+		add(MachineID.G2XS);
+		add(MachineID.TQS);
 	}};
 	
 	private static final SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -104,37 +105,24 @@ public class FileFactory {
 		SimpleDateFormat fdf = new SimpleDateFormat("YYYYMMdd");
 		SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 		String loginfo="";
-		File tmpdir = remotefile.getParentFile();
-		String projectDirName = tmpdir.getParent();
-		while (true) {
-			String tmpfilename = tmpdir.getName();
-			if (tmpfilename.equals("RAWdata")) {
-				projectDirName = tmpdir.getParent();
-				break;
-			}else {
-				tmpdir = tmpdir.getParentFile();
-			}
-		}
-		String filterdirname = projectDirName + File.separator + "filter";
-		File filterdir = new File(filterdirname);
-		File filterfile = new File(filterdirname + File.separator + remotefile.getName());
+		String filterfilepath = remotefile.getAbsolutePath().replace("RAWdata", "filter");
+		File filterfile = new File(filterfilepath);
 		if (filterfile.exists()) {
 			long time = filterfile.lastModified();
-			String childrendirname = filterdirname + File.separator + fdf.format(new Date(time));
+			String childrenfilename = filterfilepath.replace("filter", "filter" + File.separator + fdf.format(new Date(time)));
 			loginfo = df.format(new Date()) + " Move exists filter file to new directory: " + filterfile.getAbsolutePath() + "\n";
 			try {
 				logtxt.getDocument().insertString(0, loginfo, logtxt.getStyle("normal"));
 			} catch (BadLocationException e) {
 				e.printStackTrace();
 			}
-			File childrendir = new File(childrendirname);
+			File childrenfile = new File(childrenfilename);
 			try {
-				FileUtils.moveFileToDirectory(filterfile, childrendir, true);
+				FileUtils.moveFile(filterfile, childrenfile);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}				
 		}
-
 		loginfo = df.format(new Date()) + " Move the exists file to filter directory: " + remotefile.getAbsolutePath() +"\n";
 		try {
 			logtxt.getDocument().insertString(0, loginfo, logtxt.getStyle("normal"));
@@ -142,11 +130,10 @@ public class FileFactory {
 			e1.printStackTrace();
 		}
 		try {
-			FileUtils.moveFileToDirectory(remotefile, filterdir, true);
+			FileUtils.moveFile(remotefile, filterfile);
 		} catch (IOException e) {
 			e.printStackTrace();
-		}
-							
+		}							
 	}
 	
 	public static String getNewFilePath(File file) {
@@ -170,7 +157,7 @@ public class FileFactory {
 	
 	public static File getProteinRemoteFile(File lfile, File localDir, File remoteDir, String projectid, int groupnumber, FileType filetype) {
 		String lfilepath = lfile.getAbsolutePath();
-		String rfilepath = "";
+		String rfilepath = null;
 		String remoteDirpath= remoteDir.getAbsolutePath();
 		switch(filetype) {
 		case projectFile_single:
@@ -203,7 +190,11 @@ public class FileFactory {
 		default:
 			break;
 		}
-		return new File(rfilepath);
+		if (rfilepath==null) {
+			return null;
+		}else {
+			return new File(rfilepath);
+		}
 	}
 	
 	public static File getProteinRemoteFile(File lfile, File localDir, File remoteDir, String projectid, FileType filetype) {
@@ -230,8 +221,8 @@ public class FileFactory {
 		}else if (localfilepath.contains("_POS")) {
 			posOrnegfile = "pos";
 		}
-		if (localfilepath.contains(".raw/") || localfilepath.contains(".d/") || localfilepath.contains(".D/")) {
-			rawfile = lfile.getParent();
+		if (localfilepath.contains(".raw"+File.separator) || localfilepath.contains(".d"+File.separator) || localfilepath.contains(".D"+File.separator)) {
+			rawfile = lfile.getParentFile().getName();
 		}
 		if (posOrnegfile != null) {
 			rfilepath += File.separator + posOrnegfile;
@@ -385,16 +376,16 @@ public class FileFactory {
 		
 	}
 	
-	public static List<File> listfiles(File file, List<File> filelists, String containString, String filterString, boolean contain) {	
+	public static List<File> listfiles(File file, List<File> filelists, String containString1, String containString2, boolean contain) {	
 		if (file.isDirectory()) {
 			for (File scanfile: file.listFiles()) {
 				if (scanfile.isFile()) {
-					if ((contain && scanfile.getAbsolutePath().contains(containString) && scanfile.getAbsolutePath().contains(filterString)) || 
-							(!contain && !scanfile.getAbsolutePath().contains(containString) && !scanfile.getAbsolutePath().contains(filterString))) {
+					if ((contain && scanfile.getAbsolutePath().contains(containString1) && scanfile.getAbsolutePath().contains(containString2)) || 
+							(!contain && !scanfile.getAbsolutePath().contains(containString1) && !scanfile.getAbsolutePath().contains(containString2))) {
 						filelists.add(scanfile);
 					}
 				}else {
-					listfiles(scanfile, filelists, containString, filterString, contain);
+					listfiles(scanfile, filelists, containString1, containString2, contain);
 				}
 			}
 		}
@@ -459,7 +450,7 @@ public class FileFactory {
 		String filepath = file.getAbsolutePath();
 		boolean istransfer = false;
 		if (withDATAmachines.contains(machineID)){
-			if (filepath.contains("DATA") || filepath.contains("_QC")) {
+			if (filepath.toUpperCase().contains(File.separator+"DATA"+File.separator) || filepath.contains("_QC"+File.separator)) {
 				istransfer = true;
 			}else {
 				istransfer = false;

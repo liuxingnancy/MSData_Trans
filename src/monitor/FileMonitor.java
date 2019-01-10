@@ -30,17 +30,6 @@ import tools.SampleFiles;
 
 public class FileMonitor {
 
-	private static final List<MachineID> withDATAmachines = new ArrayList<MachineID>() {/**
-		 * 
-		 */
-		private static final long serialVersionUID = 1L;
-
-	{
-		add(MachineID.M4500);
-		add(MachineID.M5500);
-		add(MachineID.M5600);
-		add(MachineID.M6500);
-	}};
 	private File localfile;
 	private File remotefile;
 	private File processingfile;
@@ -128,12 +117,8 @@ public class FileMonitor {
 	public void proteinCheckLocal() {
 		List<File> qcfiles = new ArrayList<File>();
 		qcfiles = FileFactory.listfiles(this.localfile, qcfiles, "_QC", true);
-		List<File> localprojectfiles = new ArrayList<File>();
-		if (withDATAmachines.contains(this.machineID)) {
-			localprojectfiles = FileFactory.listfiles(this.localfile, localprojectfiles, "DATA", "_QC");
-		}else {
-			localprojectfiles = FileFactory.listfiles(this.localfile, localprojectfiles, "_QC", false);
-		}
+		List<File> localprojectfiles = new ArrayList<File>();			
+		localprojectfiles = FileFactory.listfiles(this.localfile, localprojectfiles, "_QC", false);
 		SampleFiles samplefiles ;
 		HashMap<String, SampleFiles> samplehash = FileFactory.readProteinSampleList(this.samplelist);
 		//System.out.println(samplehash.get("sample1").getProjectname());
@@ -142,6 +127,7 @@ public class FileMonitor {
 		//Set<String> remotefilenamelist = remotefilelist.keySet();
 		File rfile;
 		for (File lfile: localprojectfiles) {
+			if (!FileFactory.isTransfer(lfile, machineID)) continue; 
 			samplefiles = FileFactory.ProteinSampleFilesFind(lfile, samplehash, logtxt);
 			if (samplefiles == null) {
 				continue;
@@ -178,12 +164,10 @@ public class FileMonitor {
 		List<File> localprojectfiles = new ArrayList<File>();
 		localprojectfiles = FileFactory.listfiles(this.localfile, localprojectfiles, "_QC", false);
 		HashMap<String, String> samplehash = FileFactory.readOtherSampleList(this.samplelist);
-		//HashMap<String, String> remotefilelist = new HashMap<String, String>();
-		//remotefilelist = FileFactory.listfilenames(this.remotefile, remotefilelist, new remoteFileFilter());
-		//Set<String> remotefilenamelist = remotefilelist.keySet();
 		File rfile;
 		String remoteParentDir = null;
 		for (File lfile: localprojectfiles) {
+			if (!FileFactory.isTransfer(lfile, machineID)) continue;
 			remoteParentDir = FileFactory.otherTransPathFind(lfile, samplehash, logtxt);
 			if (remoteParentDir == null) {
 				continue;

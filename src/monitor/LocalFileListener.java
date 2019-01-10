@@ -60,70 +60,46 @@ public class LocalFileListener implements FileAlterationListener{
 
 	@Override
 	public void onFileChange(File file) {
-		String filepath = file.getAbsolutePath();
-		if (FileFactory.isTransfer(file, machineID)) {
-			File remotefile = null;
-			if (analysistype.compareTo(AnalysisType.Protein)==0) {
-				HashMap<String, SampleFiles> samplehash = FileFactory.readProteinSampleList(samplelist);
-				SampleFiles samplefiles = FileFactory.ProteinSampleFilesFind(file, samplehash, logtxt);
-				if (samplefiles != null) {
-					FileType filetype = filepath.contains("_QC")? FileType.QCFile: samplefiles.getFileType();
-					remotefile = FileFactory.getProteinRemoteFile(file, localFile, remoteFile, samplefiles.getProjectname(), samplefiles.getGroupNumber(), filetype);
-				}
-			}else {
-				HashMap<String, String> othersamplehash = FileFactory.readOtherSampleList(samplelist);
-				String RemoteParentDir = FileFactory.otherTransPathFind(file, othersamplehash, logtxt);
-				if (RemoteParentDir != null) {
-					remotefile = FileFactory.getOtherRemoteFile(file, localFile, remoteFile, RemoteParentDir);
-				}
-			}
-			if (remotefile != null) {
-				FileEntry fileEntry = new FileEntry(file);
-				fileEntry.refresh(file);		
-				if (remotefile.exists()) {
-					FileFactory.removeExsitsFile(remotefile, logtxt);
-				}
-				while (true) {
-					if(!fileEntry.refresh(file, timeout)) {
-						FileFactory.copyFile(file, remotefile, logtxt);
-						break;
-					}
-				}
-			}
-		}
+		
 	}
 
 	@Override
 	public void onFileCreate(File file) {
 		String filepath = file.getAbsolutePath();
 		if (FileFactory.isTransfer(file, machineID)) {
-			File remotefile = null;
-			if (analysistype.compareTo(AnalysisType.Protein)==0) {
-				HashMap<String, SampleFiles> samplehash = FileFactory.readProteinSampleList(samplelist);
-				SampleFiles samplefiles = FileFactory.ProteinSampleFilesFind(file, samplehash, logtxt);
-				FileType filetype = filepath.contains("_QC")? FileType.QCFile: samplefiles.getFileType();
-				remotefile = FileFactory.getProteinRemoteFile(file, localFile, remoteFile, samplefiles.getProjectname(), samplefiles.getGroupNumber(), filetype); 
-			}else {
-				HashMap<String, String> othersamplehash = FileFactory.readOtherSampleList(samplelist);
-				String RemoteParentDir = FileFactory.otherTransPathFind(file, othersamplehash, logtxt);
-				if (RemoteParentDir != null) {
-					remotefile = FileFactory.getOtherRemoteFile(file, localFile, remoteFile, RemoteParentDir);
-				}
-			}
-			if(remotefile != null) {
-				FileEntry fileEntry = new FileEntry(file);
-				fileEntry.refresh(file);	
-				if (remotefile.exists()) {
-					FileFactory.removeExsitsFile(remotefile, logtxt);
-				}
-				while (true) {
-					if(!fileEntry.refresh(file, timeout)) {
-						FileFactory.copyFile(file, remotefile, logtxt);
-						break;
+			Thread copyThread = new Thread(new Runnable() {
+				@Override 
+				public void run() {
+					File remotefile = null;
+					if (analysistype.compareTo(AnalysisType.Protein)==0) {
+						HashMap<String, SampleFiles> samplehash = FileFactory.readProteinSampleList(samplelist);
+						SampleFiles samplefiles = FileFactory.ProteinSampleFilesFind(file, samplehash, logtxt);
+						FileType filetype = filepath.contains("_QC")? FileType.QCFile: samplefiles.getFileType();
+						remotefile = FileFactory.getProteinRemoteFile(file, localFile, remoteFile, samplefiles.getProjectname(), samplefiles.getGroupNumber(), filetype); 
+					}else {
+						HashMap<String, String> othersamplehash = FileFactory.readOtherSampleList(samplelist);
+						String RemoteParentDir = FileFactory.otherTransPathFind(file, othersamplehash, logtxt);
+						if (RemoteParentDir != null) {
+							remotefile = FileFactory.getOtherRemoteFile(file, localFile, remoteFile, RemoteParentDir);
+						}
+					}
+					if(remotefile != null && !FileFactory.fileEqual(file, remotefile)) {
+						FileEntry fileEntry = new FileEntry(file);
+						fileEntry.refresh(file);
+						if (remotefile.exists()) {
+							FileFactory.removeExsitsFile(remotefile, logtxt);
+						}
+						while(true) {
+							if (!fileEntry.refresh(file,timeout)) {
+								FileFactory.copyFile(file, remotefile, logtxt);
+								break;
+							}
+						}
 					}
 				}
-			}
-		}	
+			});
+			copyThread.start();
+		}			
 	}
 
 

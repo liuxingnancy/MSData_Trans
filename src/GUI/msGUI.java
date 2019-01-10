@@ -421,10 +421,10 @@ public class msGUI {
 			}
 		}
 		
-		long scantimeout = 300;
+		long scantimeout = 30;
 		long refreshtimeout = Long.parseLong(refreshtxt.getText());
 		monitor = new FileMonitor(localfile, remotefile, processfile, samplelist, analysistype, machineID, scantimeout, refreshtimeout, logtxt);
-		if (filePathCheck(remotefile, logtxt) && filePathCheck(localfile, logtxt) && filePathCheck(processfile, logtxt) && filePathCheck(samplelist, logtxt)) {
+		if (filePathCheck(remotefile, logtxt) && filePathCheck(localfile, logtxt) && filePathCheck(new File(processdir), logtxt) && filePathCheck(samplelist, logtxt)) {
 			changeEnbled(false);
 			monitor.start();
 		}
@@ -433,11 +433,10 @@ public class msGUI {
 	private void stopRun(){
 		changeEnbled(true);
 		
-		try {
+		try { 
 			monitor.stop();
 		} catch (Exception e){
 			e.printStackTrace();
 		}
 	}
-	
 }

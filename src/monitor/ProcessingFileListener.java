@@ -6,7 +6,6 @@ import org.apache.commons.io.monitor.FileAlterationListener;
 import org.apache.commons.io.monitor.FileAlterationObserver;
 
 import tools.FileFactory;
-import tools.FileType;
 
 /**
  * 
@@ -57,34 +56,24 @@ public class ProcessingFileListener implements FileAlterationListener {
 		File remotefile = FileFactory.getProcessRemoteFile(file, this.processFile, this.remoteFile);
 		FileEntry fileEntry = new FileEntry(file);
 		fileEntry.refresh(file);
-		Runnable copyRunnable = new Runnable() {
-			@Override
-			public void run() {
-				while (true) {
-					if (!fileEntry.refresh(file, timeout)) {
-						FileFactory.copyFile(file, remotefile, logtxt);
-						break;
+		if (!FileFactory.fileEqual(file, remotefile)) {
+			Thread copyThread = new Thread(new Runnable() {
+				@Override
+				public void run() {
+					while (true) {
+						if (!fileEntry.refresh(file, timeout)) {
+							FileFactory.copyFile(file, remotefile, logtxt);
+							break;
+						}
 					}
 				}
-			}
-		};
-		Thread copyThread = new Thread(copyRunnable);
-		copyThread.run();
+			});
+			copyThread.start();
+		}		
 	}
+	
 	@Override
 	public void onFileChange(File file) {
-		File remotefile = FileFactory.getProcessRemoteFile(file, this.processFile, this.remoteFile);
-		FileEntry fileEntry = new FileEntry(file);
-		fileEntry.refresh(file);
-		
-		if (remotefile.exists()) {
-			while (true) {
-				if (!fileEntry.refresh(file, timeout)) {
-					FileFactory.copyFile(file, remotefile, logtxt);
-					break;
-				}
-			}
-		}		
 	}
 	@Override
 	public void onFileDelete(File file) {
