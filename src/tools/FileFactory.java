@@ -1,10 +1,12 @@
 package tools;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -45,10 +47,38 @@ public class FileFactory {
 		add(MachineID.TQS);
 	}};
 	
-	private static final SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+	public static final SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+	
+	public static final SimpleDateFormat fdf = new SimpleDateFormat("YYYYMMdd");
 	
 	private FileFactory() {
 		
+	}
+	
+	public static String getLogFilePath() {
+		File logdir = new File(System.getProperty("user.dir") + File.separator + "log");
+		if (!logdir.exists()) logdir.mkdirs();
+		String logfilepath = logdir.getAbsolutePath() + File.separator + fdf.format(new Date()) + "_log.txt";
+		return logfilepath;
+	}
+	
+	public static void logWrite(JTextPane logtxt) {
+		String logfilepath = getLogFilePath();
+		String loginfo = df.format(new Date()) + " Write the log information to file: " + logfilepath + "\n";
+		try {
+			BufferedWriter logWriter = new BufferedWriter(new FileWriter(logfilepath, true));
+			logtxt.write(logWriter);
+			logWriter.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		try {
+			logtxt.setText("");
+			logtxt.getDocument().insertString(0, loginfo, logtxt.getStyle("normal"));
+		} catch (BadLocationException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 	}
 
 	public static boolean fileEqual(File file1, File file2) {

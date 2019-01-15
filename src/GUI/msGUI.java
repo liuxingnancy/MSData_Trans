@@ -2,6 +2,7 @@ package GUI;
 
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 
 import java.awt.Color;
@@ -11,9 +12,10 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.EventQueue;
 import java.io.File;
-
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
 import javax.swing.JButton;
@@ -23,9 +25,11 @@ import javax.swing.JTextPane;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Style;
 import javax.swing.text.StyleConstants;
+import javax.swing.Timer;
 
 import monitor.FileMonitor;
 import tools.AnalysisType;
+import tools.FileFactory;
 import tools.MachineID;
 
 import javax.swing.JScrollPane;
@@ -66,6 +70,8 @@ public class msGUI {
 	private JButton stopbutton;
 	private JScrollPane scrollPane;
 	private JTextPane logtxt;
+	private Timer timer;
+	private static final int delay = 24*60*60*1000;
 	private JComboBox<String> machinebox;
 	private JComboBox<String> analysisbox;
 	private static String[] analysislist = {"Protein", "Metabolite",  "Small_molecule"};
@@ -96,7 +102,18 @@ public class msGUI {
 		frame = new JFrame("MS DATA Transfer");
 		frame.setBounds(450, 250, 800, 600);
 		frame.getContentPane().setBackground(SystemColor.inactiveCaptionBorder);
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+		frame.addWindowListener(new WindowAdapter() {
+			public void windowClosing(WindowEvent e) {
+				int flag = JOptionPane.showConfirmDialog(frame, "Sure to close?", "Care!", JOptionPane.YES_NO_OPTION, JOptionPane.INFORMATION_MESSAGE);
+				if(JOptionPane.YES_OPTION == flag) {
+					FileFactory.logWrite(logtxt);
+					System.exit(0);
+				}else {
+					return;
+				}
+			}
+		});
 		
 		remotelabel = new JLabel("Remote Path");
 		remotelabel.setFont(new Font("Segoe UI Light", Font.BOLD, 16));
@@ -134,8 +151,8 @@ public class msGUI {
 		thirdtxt = new JTextField();
 		thirdtxt.setForeground(Color.LIGHT_GRAY);
 		thirdtxt.setFont(new Font("Tahoma", Font.PLAIN, 14));
-		//thirdtxt.setText("E:\\process\\MSData\\Machine_number\\");
-		thirdtxt.setText("E:\\BGI_work\\luhuifang\\MSTestData\\process\\5600-1");
+		thirdtxt.setText("E:\\process\\MSData\\Machine_number (unrequested)");
+		//thirdtxt.setText("E:\\BGI_work\\luhuifang\\MSTestData\\process\\5600-1");
 		thirdtxt.setColumns(10);
 		thirdtxt.addKeyListener(new KeyAdapter() {
 			public void keyTyped(KeyEvent e) {
@@ -209,6 +226,14 @@ public class msGUI {
 		
 		scrollPane = new JScrollPane(logtxt);
 		
+		timer = new Timer(delay, new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				FileFactory.logWrite(logtxt);
+			}
+		});
+		timer.start();
+		
 		machinelabel = new JLabel("Machine ID");
 		machinelabel.setFont(new Font("Segoe UI Light", Font.BOLD, 16));
 		
@@ -255,12 +280,22 @@ public class msGUI {
 		
 		stopbutton.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e) {
-				stopRun();
+				int flag = JOptionPane.showConfirmDialog(frame, "Sure to stop?", "Care!", JOptionPane.YES_NO_OPTION, JOptionPane.INFORMATION_MESSAGE);
+				if(JOptionPane.YES_OPTION == flag) {
+					stopRun();
+				}else {
+					return;
+				}
 			}
 		});
 		stopbutton.addKeyListener(new KeyAdapter() {
 			public void keyPressed (KeyEvent e) {
-				stopRun();
+				int flag = JOptionPane.showConfirmDialog(frame, "Sure to stop?", "Care!", JOptionPane.YES_NO_OPTION, JOptionPane.INFORMATION_MESSAGE);
+				if(JOptionPane.YES_OPTION == flag) {
+					stopRun();
+				}else {
+					return;
+				}
 			}
 		});
 			
@@ -382,6 +417,8 @@ public class msGUI {
 		runbutton.setEnabled(flag);
 		localbrowse.setEnabled(flag);
 		remotebrowse.setEnabled(flag);
+		thirdbrowse.setEnabled(flag);
+		samplebrowse.setEnabled(flag);
 		stopbutton.setEnabled(!flag);
 	}
 	
@@ -396,43 +433,45 @@ public class msGUI {
 		}
 	}
 	
-	private void startRun(){
+	private void startRun() {
 		logtxt.setText("");
-		File localfile = new File(localtxt.getText());
-		String remotedir = remotetxt.getText();
+		File localfile = new File(localtxt.getText().trim());
+		String remotedir = remotetxt.getText().trim();
 		File remotefile = new File(remotedir);
-		String processdir = thirdtxt.getText();
+		String processdir = thirdtxt.getText().trim();
 		String machine = (String) machinebox.getSelectedItem();
 		String analysis = (String) analysisbox.getSelectedItem();
 		AnalysisType analysistype = AnalysisType.getAnalysisType(analysis);
 		MachineID machineID = MachineID.getMachineID(machine);
 		String season = remotefile.getName();
 		String year = remotefile.getParentFile().getName();
-		File processfile = new File(processdir + File.separator + year + File.separator + season);
-		File samplelist = new File(sampletxt.getText());
-		
-		if (!remotefile.exists()) {
-			remotefile.mkdirs();
-			String loginfo = df.format(new Date()) + " Create the remote directory: " + remotefile.getAbsolutePath() + "\n";
+		File processfile = null;
+		if ((!processdir.contains("(unrequested)")) && !processdir.equals("")) {
+			processfile = new File(processdir + File.separator + year + File.separator + season);
+		}else{
+			String loginfo = df.format(new Date()) + " WARN: The processing Path has not been given. The program is running, but no monitor for processing file. \n";
 			try {
-				logtxt.getDocument().insertString(0, loginfo, logtxt.getStyle("blue"));
+				logtxt.getDocument().insertString(0, loginfo, logtxt.getStyle("red"));
 			} catch (BadLocationException e) {
 				e.printStackTrace();
 			}
 		}
+		File samplelist = new File(sampletxt.getText());
 		
 		long scantimeout = 30;
 		long refreshtimeout = Long.parseLong(refreshtxt.getText());
 		monitor = new FileMonitor(localfile, remotefile, processfile, samplelist, analysistype, machineID, scantimeout, refreshtimeout, logtxt);
-		if (filePathCheck(remotefile, logtxt) && filePathCheck(localfile, logtxt) && filePathCheck(new File(processdir), logtxt) && filePathCheck(samplelist, logtxt)) {
-			changeEnbled(false);
-			monitor.start();
+		if (filePathCheck(remotefile, logtxt) && filePathCheck(localfile, logtxt) && filePathCheck(samplelist, logtxt)) {
+			if (processfile == null || (processfile != null && filePathCheck(processfile, logtxt))) {
+				changeEnbled(false);
+				monitor.start();
+			}
 		}
 	}
 	
 	private void stopRun(){
-		changeEnbled(true);
-		
+		FileFactory.logWrite(logtxt);
+		changeEnbled(true);		
 		try { 
 			monitor.stop();
 		} catch (Exception e){

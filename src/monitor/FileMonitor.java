@@ -63,11 +63,13 @@ public class FileMonitor {
 		LocalFileListener filelistener = new LocalFileListener(this.localfile, this.remotefile, this.samplelist, this.analysistype, this.machineID, this.fileChangeCheckTimeout, this.logtxt);
 		FileAlterationObserver fileobserver = new FileAlterationObserver(this.localfile);
 		fileobserver.addListener(filelistener);
-		ProcessingFileListener processingfilelistener = new ProcessingFileListener(this.processingfile, this.remotefile, this.logtxt);
-		FileAlterationObserver processingfileobserver = new FileAlterationObserver(this.processingfile, this.processingfilefilter);
-		processingfileobserver.addListener(processingfilelistener);
 		this.filemonitor.addObserver(fileobserver);
-		this.filemonitor.addObserver(processingfileobserver);
+		if (this.processingfile != null) {
+			ProcessingFileListener processingfilelistener = new ProcessingFileListener(this.processingfile, this.remotefile, this.logtxt);
+			FileAlterationObserver processingfileobserver = new FileAlterationObserver(this.processingfile, this.processingfilefilter);
+			processingfileobserver.addListener(processingfilelistener);
+			this.filemonitor.addObserver(processingfileobserver);
+		}
 	}
 	
 	public class QCfileFilter implements FileFilter {
@@ -121,10 +123,6 @@ public class FileMonitor {
 		localprojectfiles = FileFactory.listfiles(this.localfile, localprojectfiles, "_QC", false);
 		SampleFiles samplefiles ;
 		HashMap<String, SampleFiles> samplehash = FileFactory.readProteinSampleList(this.samplelist);
-		//System.out.println(samplehash.get("sample1").getProjectname());
-		//HashMap<String, String> remotefilelist = new HashMap<String, String>();
-		//remotefilelist = FileFactory.listfilenames(this.remotefile, remotefilelist, new remoteFileFilter());
-		//Set<String> remotefilenamelist = remotefilelist.keySet();
 		File rfile;
 		for (File lfile: localprojectfiles) {
 			if (!FileFactory.isTransfer(lfile, machineID)) continue; 
@@ -222,14 +220,16 @@ public class FileMonitor {
 		} catch (BadLocationException e1) {
 			e1.printStackTrace();
 		}
-		Runnable checkProcessRunnable = new Runnable() {
-			@Override
-			public void run() {
-				checkProcess();
-			}
-		};
-		Thread checkProcessThread = new Thread(checkProcessRunnable);
-		checkProcessThread.start();
+		if (this.processingfile != null) {
+			Runnable checkProcessRunnable = new Runnable() {
+				@Override
+				public void run() {
+					checkProcess();
+				}
+			};
+			Thread checkProcessThread = new Thread(checkProcessRunnable);
+			checkProcessThread.start();
+		}
 		
 		try {
 			this.filemonitor.start();
