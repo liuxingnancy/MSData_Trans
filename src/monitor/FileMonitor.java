@@ -123,32 +123,34 @@ public class FileMonitor {
 		localprojectfiles = FileFactory.listfiles(this.localfile, localprojectfiles, "_QC", false);
 		SampleFiles samplefiles ;
 		HashMap<String, SampleFiles> samplehash = FileFactory.readProteinSampleList(this.samplelist);
-		File rfile;
+		String rfilename;
 		for (File lfile: localprojectfiles) {
 			if (!FileFactory.isTransfer(lfile, machineID)) continue; 
 			samplefiles = FileFactory.ProteinSampleFilesFind(lfile, samplehash, logtxt);
 			if (samplefiles == null) {
 				continue;
 			}else {
-				rfile = FileFactory.getProteinRemoteFile(lfile, this.localfile, this.remotefile, samplefiles.getProjectname(), samplefiles.getGroupNumber(), samplefiles.getFileType());
+				rfilename = FileFactory.getProteinRemoteFile(lfile, this.localfile, this.remotefile, samplefiles.getProjectname(), samplefiles.getGroupNumber(), samplefiles.getFileType());
 			}
+			File rfile = new File(rfilename);
 			if (!FileFactory.fileEqual(lfile, rfile)) {
-				if (rfile.exists()) {
+				if (rfile.exists() && (lfile.lastModified() - rfile.lastModified()) > 6*60*60*1000L) {
 					FileFactory.removeExsitsFile(rfile, logtxt);
 				}
 				FileFactory.copyFile(lfile, rfile, logtxt);
 			}
 		}
 		
-		File remoteQCfile;
+		String remoteQCfilename;
 		for (File qcfile : qcfiles) {
 			samplefiles = FileFactory.ProteinSampleFilesFind(qcfile, samplehash, logtxt);
 			if (samplefiles == null) {
 				continue;
 			}else {
 				String projectid = samplefiles.getProjectname();
-				remoteQCfile = FileFactory.getProteinRemoteFile(qcfile, this.localfile, this.remotefile, projectid, FileType.QCFile);
+				remoteQCfilename = FileFactory.getProteinRemoteFile(qcfile, this.localfile, this.remotefile, projectid, FileType.QCFile);
 			}
+			File remoteQCfile = new File(remoteQCfilename);
 			if (!FileFactory.fileEqual(qcfile, remoteQCfile)) {
 				if (remoteQCfile.exists()) {
 					FileFactory.removeExsitsFile(remoteQCfile, logtxt);
@@ -162,7 +164,7 @@ public class FileMonitor {
 		List<File> localprojectfiles = new ArrayList<File>();
 		localprojectfiles = FileFactory.listfiles(this.localfile, localprojectfiles, "_QC", false);
 		HashMap<String, String> samplehash = FileFactory.readOtherSampleList(this.samplelist);
-		File rfile;
+		String rfilename;
 		String remoteParentDir = null;
 		for (File lfile: localprojectfiles) {
 			if (!FileFactory.isTransfer(lfile, machineID)) continue;
@@ -170,10 +172,11 @@ public class FileMonitor {
 			if (remoteParentDir == null) {
 				continue;
 			}else {
-				rfile = FileFactory.getOtherRemoteFile(lfile, this.localfile, this.remotefile, remoteParentDir);
+				rfilename = FileFactory.getOtherRemoteFile(lfile, this.localfile, this.remotefile, remoteParentDir);
 			}
+			File rfile = new File(rfilename);
 			if (!FileFactory.fileEqual(lfile, rfile)) {
-				if (rfile.exists()) {
+				if (rfile.exists() && (lfile.lastModified() - rfile.lastModified()) > 6*60*60*1000L) {
 					FileFactory.removeExsitsFile(rfile, logtxt);
 				}
 				FileFactory.copyFile(lfile, rfile, logtxt);

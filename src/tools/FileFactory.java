@@ -148,7 +148,8 @@ public class FileFactory {
 			}
 			File childrenfile = new File(childrenfilename);
 			try {
-				FileUtils.moveFile(filterfile, childrenfile);
+				if (childrenfile.exists()) childrenfile.delete();
+				FileUtils.moveToDirectory(filterfile, childrenfile.getParentFile(), true);;
 			} catch (IOException e) {
 				e.printStackTrace();
 			}				
@@ -185,9 +186,9 @@ public class FileFactory {
 		return new File(rfilepath);
 	}
 	
-	public static File getProteinRemoteFile(File lfile, File localDir, File remoteDir, String projectid, int groupnumber, FileType filetype) {
+	public static String getProteinRemoteFile(File lfile, File localDir, File remoteDir, String projectid, int groupnumber, FileType filetype) {
 		String lfilepath = lfile.getAbsolutePath();
-		String rfilepath = null;
+		String rfilepath = "";
 		String remoteDirpath= remoteDir.getAbsolutePath();
 		switch(filetype) {
 		case projectFile_single:
@@ -220,26 +221,22 @@ public class FileFactory {
 		default:
 			break;
 		}
-		if (rfilepath==null) {
-			return null;
-		}else {
-			return new File(rfilepath);
-		}
+		return rfilepath;
 	}
 	
-	public static File getProteinRemoteFile(File lfile, File localDir, File remoteDir, String projectid, FileType filetype) {
+	public static String getProteinRemoteFile(File lfile, File localDir, File remoteDir, String projectid, FileType filetype) {
 		return getProteinRemoteFile( lfile, localDir, remoteDir, projectid, 0, filetype);
 	}
 	
-	public static File getProteinRemoteFile(File lfile, File localDir, File remoteDir, int groupid, FileType filetype) {
+	public static String getProteinRemoteFile(File lfile, File localDir, File remoteDir, int groupid, FileType filetype) {
 		return getProteinRemoteFile( lfile, localDir, remoteDir, null, groupid, filetype);
 	}
 	
-	public static File getProteinRemoteFile(File lfile, File localDir, File remoteDir, FileType filetype) {
+	public static String getProteinRemoteFile(File lfile, File localDir, File remoteDir, FileType filetype) {
 		return getProteinRemoteFile( lfile, localDir, remoteDir, null, 0, filetype);
 	}
 	
-	public static File getOtherRemoteFile(File lfile, File localDir, File remoteDir, String remoteParentDir) {
+	public static String getOtherRemoteFile(File lfile, File localDir, File remoteDir, String remoteParentDir) {
 		String localfilename = lfile.getName();
 		String localfilepath = lfile.getAbsolutePath();
 		String remoteDirpath = remoteDir.getAbsolutePath();
@@ -261,7 +258,7 @@ public class FileFactory {
 			rfilepath += File.separator + rawfile;
 		}
 		rfilepath += File.separator + localfilename;
-		return new File(rfilepath);
+		return rfilepath;
 	}
 	
 	public static HashMap<String, SampleFiles> readProteinSampleList(File samplelistfile) {

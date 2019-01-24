@@ -47,16 +47,14 @@ public class ProcessingFileListener implements FileAlterationListener {
 		
 	}
 	@Override
-	public void onDirectoryDelete(File directory) {
-		// TODO Auto-generated method stub
-		
+	public void onDirectoryDelete(File directory) {		
 	}
 	@Override
 	public void onFileCreate(File file) {
 		File remotefile = FileFactory.getProcessRemoteFile(file, this.processFile, this.remoteFile);
-		FileEntry fileEntry = new FileEntry(file);
-		fileEntry.refresh(file);
 		if (!FileFactory.fileEqual(file, remotefile)) {
+			FileEntry fileEntry = new FileEntry(file);
+			fileEntry.refresh(file);
 			Thread copyThread = new Thread(new Runnable() {
 				@Override
 				public void run() {
@@ -74,11 +72,29 @@ public class ProcessingFileListener implements FileAlterationListener {
 	
 	@Override
 	public void onFileChange(File file) {
+		File remotefile = FileFactory.getProcessRemoteFile(file, this.processFile, this.remoteFile);
+		if (remotefile!=null && remotefile.exists() && !FileFactory.fileEqual(file, remotefile)) {
+			FileEntry fileEntry = new FileEntry(file);
+			fileEntry.refresh(file);
+			Thread copyThread = new Thread(new Runnable() {
+				@Override
+				public void run() {
+					while(true) {
+						if(!fileEntry.refresh(file, timeout) && !FileFactory.fileEqual(file, remotefile)) {
+							FileFactory.copyFile(file,  remotefile,  logtxt);
+							break;
+						}else if(FileFactory.fileEqual(file, remotefile)) {
+							break;
+						}
+					}
+				}
+			});
+			copyThread.start();
+		}
 	}
 	@Override
 	public void onFileDelete(File file) {
-		// TODO Auto-generated method stub
-		
+		// TODO Auto-generated method stub		
 	}
 	@Override
 	public void onStop(FileAlterationObserver observer) {

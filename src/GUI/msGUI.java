@@ -458,7 +458,7 @@ public class msGUI {
 		}
 		File samplelist = new File(sampletxt.getText());
 		
-		long scantimeout = 30;
+		long scantimeout = 60;
 		long refreshtimeout = Long.parseLong(refreshtxt.getText());
 		monitor = new FileMonitor(localfile, remotefile, processfile, samplelist, analysistype, machineID, scantimeout, refreshtimeout, logtxt);
 		if (filePathCheck(remotefile, logtxt) && filePathCheck(localfile, logtxt) && filePathCheck(samplelist, logtxt)) {
