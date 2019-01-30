@@ -418,6 +418,9 @@ public class msGUI {
 		localbrowse.setEnabled(flag);
 		remotebrowse.setEnabled(flag);
 		thirdbrowse.setEnabled(flag);
+		machinebox.setEnabled(flag);
+		analysisbox.setEnabled(flag);
+		refreshtxt.setEnabled(flag);
 		samplebrowse.setEnabled(flag);
 		stopbutton.setEnabled(!flag);
 	}

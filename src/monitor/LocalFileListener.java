@@ -66,8 +66,10 @@ public class LocalFileListener implements FileAlterationListener{
 			if (analysistype.compareTo(AnalysisType.Protein)==0) {
 				HashMap<String, SampleFiles> samplehash = FileFactory.readProteinSampleList(samplelist);
 				SampleFiles samplefiles = FileFactory.ProteinSampleFilesFind(file, samplehash, logtxt);
-				FileType filetype = filepath.contains("_QC")? FileType.QCFile: samplefiles.getFileType();
-				remotefilename = FileFactory.getProteinRemoteFile(file, localFile, remoteFile, samplefiles.getProjectname(), samplefiles.getGroupNumber(), filetype); 
+				if (samplefiles!=null) {
+					FileType filetype = filepath.contains("_QC")? FileType.QCFile: samplefiles.getFileType();
+					remotefilename = FileFactory.getProteinRemoteFile(file, localFile, remoteFile, samplefiles.getProjectname(), samplefiles.getGroupNumber(), filetype); 
+				}
 			}else {
 				HashMap<String, String> othersamplehash = FileFactory.readOtherSampleList(samplelist);
 				String RemoteParentDir = FileFactory.otherTransPathFind(file, othersamplehash, logtxt);
@@ -77,23 +79,18 @@ public class LocalFileListener implements FileAlterationListener{
 			}
 			if (remotefilename!=null) {
 				File remotefile = new File(remotefilename);
-				if (remotefile.exists() && !FileFactory.fileEqual(file, remotefile)) {
+				if (remotefile.exists() &&  file.renameTo(file) && !FileFactory.fileEqual(file, remotefile)) {
 					Thread copyThread = new Thread(new Runnable() {
 						public void run() {
 							FileEntry fileEntry = new FileEntry(file);
-							fileEntry.refresh(file);
-							while(true) {
-								if (!fileEntry.refresh(file, timeout) && !FileFactory.fileEqual(file, remotefile)) {
-									if ((file.lastModified() - remotefile.lastModified()) > 6*60*60*1000L) {
-										FileFactory.removeExsitsFile(remotefile, logtxt);
-									}
-									FileFactory.copyFile(file, remotefile, logtxt);
-									break;
-								}else if(FileFactory.fileEqual(file, remotefile)) {
-									break;
+							fileEntry.refresh(file);							
+							if (!fileEntry.refresh(file, 60) && !FileFactory.fileEqual(file, remotefile) && file.renameTo(file)) {
+								if ((file.lastModified() - remotefile.lastModified()) > 6*60*60*1000L) {
+									FileFactory.removeExsitsFile(remotefile, logtxt);
 								}
+								FileFactory.copyFile(file, remotefile, logtxt);
 							}
-						}
+						}						
 					});
 					copyThread.start();
 				}
@@ -109,8 +106,10 @@ public class LocalFileListener implements FileAlterationListener{
 			if (analysistype.compareTo(AnalysisType.Protein)==0) {
 				HashMap<String, SampleFiles> samplehash = FileFactory.readProteinSampleList(samplelist);
 				SampleFiles samplefiles = FileFactory.ProteinSampleFilesFind(file, samplehash, logtxt);
-				FileType filetype = filepath.contains("_QC")? FileType.QCFile: samplefiles.getFileType();
-				remotefilename = FileFactory.getProteinRemoteFile(file, localFile, remoteFile, samplefiles.getProjectname(), samplefiles.getGroupNumber(), filetype); 
+				if (samplefiles!=null) {
+					FileType filetype = filepath.contains("_QC")? FileType.QCFile: samplefiles.getFileType();
+					remotefilename = FileFactory.getProteinRemoteFile(file, localFile, remoteFile, samplefiles.getProjectname(), samplefiles.getGroupNumber(), filetype); 
+				}
 			}else {
 				HashMap<String, String> othersamplehash = FileFactory.readOtherSampleList(samplelist);
 				String RemoteParentDir = FileFactory.otherTransPathFind(file, othersamplehash, logtxt);
@@ -129,9 +128,8 @@ public class LocalFileListener implements FileAlterationListener{
 								FileFactory.removeExsitsFile(remotefile, logtxt);
 							}
 							while(true) {
-								if (!fileEntry.refresh(file,timeout)) {
-									FileFactory.copyFile(file, remotefile, logtxt);
-									break;
+								if (!fileEntry.refresh(file,timeout) && file.renameTo(file)) {
+									if (FileFactory.copyFile(file, remotefile, logtxt))	break;
 								}
 							}
 						}

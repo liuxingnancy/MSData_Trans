@@ -23,6 +23,8 @@ import javax.swing.JTextPane;
 
 import org.apache.commons.io.FileUtils;
 
+import monitor.FileEntry;
+
 /**
  * 
  * @author liuxing
@@ -94,18 +96,59 @@ public class FileFactory {
 		return equal;
 	}
 	
-	public static void copyFile(File localfile, File remotefile, JTextPane logtxt) {
-		copyFile(localfile, remotefile, logtxt, 0);
+	public static class CopyFileRun implements Runnable {
+		File localfile;
+		File remotefile;
+		JTextPane logtxt;
+		long timeout;
+
+		public CopyFileRun(File localfile, File remotefile, JTextPane logtxt, long timeout) {
+			this.localfile = localfile;
+			this.remotefile = remotefile;
+			this.logtxt = logtxt;
+			this.timeout = timeout;
+		}
+		
+		@Override
+		public void run() {
+			if (!fileEqual(localfile, remotefile)) {
+				if (remotefile.exists() && (localfile.lastModified() - remotefile.lastModified()) > 6*60*60*1000L){
+					removeExsitsFile(remotefile, logtxt);
+				}
+				FileEntry lEntry = new FileEntry(localfile);
+				lEntry.refresh(localfile);
+				while (true) {
+					if(!lEntry.refresh(localfile, timeout) && localfile.renameTo(localfile)) {
+						if (copyFile(localfile, remotefile, logtxt)) break;
+					}
+				}
+				
+			}
+			
+		}
+		
 	}
 	
-	private static void copyFile(File localfile, File remotefile, JTextPane logtxt, int times) {
+	public static boolean copyFile(File localfile, File remotefile, JTextPane logtxt){
+		return copyFile(localfile, remotefile, logtxt, 0);
+	}	
+	private static boolean copyFile(File localfile, File remotefile, JTextPane logtxt, int times){
 		String loginfo = "";
+		boolean ifsucceed = false;
 		try {
 			FileUtils.copyFile(localfile, remotefile);
 			loginfo = df.format(new Date()) + " Copy succeessfully! Copy the new file: " + localfile.getAbsolutePath() + " to " + remotefile.getAbsolutePath() + "\n";
 			try {
 				logtxt.getDocument().insertString(0, loginfo, logtxt.getStyle("normal"));
 			} catch (BadLocationException e) {
+				e.printStackTrace();
+			}
+			ifsucceed = true;
+		}catch(FileNotFoundException e1) {
+			loginfo = df.format(new Date() + " File is inaccessible, wait for it's finishing! " + localfile.getAbsolutePath());
+			try {
+				logtxt.getDocument().insertString(0, loginfo, logtxt.getStyle("normal"));
+			}catch(BadLocationException e) {
 				e.printStackTrace();
 			}
 		} catch(IOException e) {
@@ -125,9 +168,11 @@ public class FileFactory {
 					logtxt.getDocument().insertString(0, loginfo, logtxt.getStyle("red"));
 				} catch (BadLocationException e2) {
 					e2.printStackTrace();
-				}	
+				}
+				ifsucceed = true;
 			}
 		}
+		return ifsucceed;
 	}
 	
 	public static void removeExsitsFile(File remotefile, JTextPane logtxt) {
@@ -188,16 +233,17 @@ public class FileFactory {
 	
 	public static String getProteinRemoteFile(File lfile, File localDir, File remoteDir, String projectid, int groupnumber, FileType filetype) {
 		String lfilepath = lfile.getAbsolutePath();
+		String lfilename = lfile.getName();
 		String rfilepath = "";
 		String remoteDirpath= remoteDir.getAbsolutePath();
+		String subprojectdirname= lfilename.toUpperCase().contains("WASH") ? "WASH" : "RAWdata";
 		switch(filetype) {
 		case projectFile_single:
-			rfilepath = remoteDirpath + File.separator + projectid + File.separator + "RAWdata" + File.separator + lfile.getName();
-			//System.out.println(rfilepath);
+			rfilepath = remoteDirpath + File.separator + projectid + File.separator + subprojectdirname + File.separator + lfile.getName();
 			break;
 		case projectFile_group:
 			String groupname = "group" + String.valueOf(groupnumber);
-			rfilepath = remoteDirpath + File.separator + projectid + File.separator + groupname + File.separator + "RAWdata" + File.separator + lfile.getName();
+			rfilepath = remoteDirpath + File.separator + projectid + File.separator + groupname + File.separator + subprojectdirname + File.separator + lfile.getName();
 			break;
 		case QCFile:
 			String QCdir = "";
@@ -271,7 +317,7 @@ public class FileFactory {
 		FileType filetype;
 		int groupnumber;
 		int filenumber;
-		String patternstring = "([^_\\s]+)_(\\d+)";
+		String patternstring = "([^_\\s]+)_(\\d+)$";
 		Pattern pattern = Pattern.compile(patternstring);
 		try {
 			filereader = new BufferedReader(new FileReader(samplelistfile));

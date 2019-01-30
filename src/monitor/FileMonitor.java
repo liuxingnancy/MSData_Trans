@@ -162,7 +162,7 @@ public class FileMonitor {
 	
 	public void otherCheckLocal() {
 		List<File> localprojectfiles = new ArrayList<File>();
-		localprojectfiles = FileFactory.listfiles(this.localfile, localprojectfiles, "_QC", false);
+		localprojectfiles = FileFactory.listfiles(this.localfile, localprojectfiles);
 		HashMap<String, String> samplehash = FileFactory.readOtherSampleList(this.samplelist);
 		String rfilename;
 		String remoteParentDir = null;

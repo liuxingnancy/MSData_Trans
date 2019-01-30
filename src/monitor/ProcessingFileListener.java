@@ -59,7 +59,7 @@ public class ProcessingFileListener implements FileAlterationListener {
 				@Override
 				public void run() {
 					while (true) {
-						if (!fileEntry.refresh(file, timeout)) {
+						if (!fileEntry.refresh(file, timeout) && file.renameTo(file)) {
 							FileFactory.copyFile(file, remotefile, logtxt);
 							break;
 						}
@@ -73,20 +73,15 @@ public class ProcessingFileListener implements FileAlterationListener {
 	@Override
 	public void onFileChange(File file) {
 		File remotefile = FileFactory.getProcessRemoteFile(file, this.processFile, this.remoteFile);
-		if (remotefile!=null && remotefile.exists() && !FileFactory.fileEqual(file, remotefile)) {
+		if (remotefile!=null && remotefile.exists() && file.renameTo(file) && !FileFactory.fileEqual(file, remotefile)) {
 			FileEntry fileEntry = new FileEntry(file);
 			fileEntry.refresh(file);
 			Thread copyThread = new Thread(new Runnable() {
 				@Override
-				public void run() {
-					while(true) {
-						if(!fileEntry.refresh(file, timeout) && !FileFactory.fileEqual(file, remotefile)) {
-							FileFactory.copyFile(file,  remotefile,  logtxt);
-							break;
-						}else if(FileFactory.fileEqual(file, remotefile)) {
-							break;
-						}
-					}
+				public void run() {					
+					if(!fileEntry.refresh(file, 60) && file.renameTo(file) && !FileFactory.fileEqual(file, remotefile)) {
+						FileFactory.copyFile(file,  remotefile,  logtxt);							
+					}					
 				}
 			});
 			copyThread.start();
